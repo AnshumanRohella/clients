@@ -53,7 +53,7 @@ public class WTGDemoClient implements GUIAnalysisClient {
     public void run(GUIAnalysisOutput output){
         
         try{
-            File file = new File("/Users/anshumanrohella/Documents/workspace/BeginImplementation/MunchLife-master/WTG/WTG.xml");
+            File file = new File("/Users/anshuman/Documents/workspace/BeginImplementation/WTG/WTG.xml");
             
             PrintStream out = new PrintStream(file);
             /*
@@ -85,19 +85,36 @@ public class WTGDemoClient implements GUIAnalysisClient {
                 
                 //    Element activity = doc.createElement("Activity");
                 String activity_name = actString(n.getWindow().toString());
-                out.println("\t<Activity name=\""+activity_name+"\" >");
+                
+                if(activity_name.contains("Alert")){
+                  for(WTGEdge inner_ed : n.getInEdges()){
+                    String source_node = actString((inner_ed.getSourceNode().getWindow().toString()));
+                    out.println("\t<Activity name=\""+source_node+"_"+activity_name+"\" >");
+                  }
+         
+                }
+                else
+                  out.println("\t<Activity name=\""+activity_name+"\" >");
                 
                 for(WTGEdge ed : n.getOutEdges()){
-                    if(actString(n.getWindow().toString()).contains(".Menu"))
+                    
+                  if(actString(n.getWindow().toString()).contains(".Menu"))
                     {
                         if(String.valueOf(ed.getEventType()).compareTo("click")==0)
                         {
                             out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+getWidgetId(ed.getGUIWidget().toString())+"\" />");
                         }
                     }
-                    else
+                    else 
+                      {
+                      if(actString(ed.getTargetNode().getWindow().toString()).contains("Alert")){
+                        out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+activity_name+"_"+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+getWidgetId(ed.getGUIWidget().toString())+"\" />");
+                       
+                      }
+                      else
                         out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+getWidgetId(ed.getGUIWidget().toString())+"\" />");
                     
+                      }
                 }
                 out.println("\t</Activity>");
                 
