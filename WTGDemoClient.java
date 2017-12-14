@@ -37,6 +37,7 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -48,6 +49,8 @@ import java.util.regex.Pattern;
  * Created by zero on 10/21/15.
  */
 public class WTGDemoClient implements GUIAnalysisClient {
+  
+  private ArrayList<String> Activities = new ArrayList<>();
     
     @Override
     public void run(GUIAnalysisOutput output){
@@ -56,9 +59,9 @@ public class WTGDemoClient implements GUIAnalysisClient {
             File file = new File("/Users/anshuman/Documents/workspace/BeginImplementation/WTG/WTG.xml");
             
             PrintStream out = new PrintStream(file);
+            
             /*
              DocumentBuilderFactory dbFactory =DocumentBuilderFactory.newInstance();
-             
              DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
              Document doc = dBuilder.newDocument();
              */
@@ -78,6 +81,17 @@ public class WTGDemoClient implements GUIAnalysisClient {
             //  pw.println(wtg.getLauncherNode().getWindow().toString());
             
             //pw.prinln(wtg.)
+            //add all the activities in the arraylist
+            
+            for(WTGNode n: nodes){
+              String temp = actString(n.getWindow().toString());
+              if(!temp.contains("Alert") && !Activities.contains(temp)){
+                Activities.add(temp);
+                System.out.println("Found and Added node activity :"+temp);
+              
+              }
+            }
+            
             
             out.print("<WindowsTransitionGraph>\n");
             
@@ -89,7 +103,10 @@ public class WTGDemoClient implements GUIAnalysisClient {
                 if(activity_name.contains("Alert")){
                   for(WTGEdge inner_ed : n.getInEdges()){
                     String source_node = actString((inner_ed.getSourceNode().getWindow().toString()));
-                    out.println("\t<Activity name=\""+source_node+"_"+activity_name+"\" >");
+                    if(Activities.contains(source_node))
+                      out.println("\t<Activity name=\""+source_node+"_"+activity_name+"\" >");
+                    else
+                      continue;
                   }
          
                 }
@@ -105,6 +122,16 @@ public class WTGDemoClient implements GUIAnalysisClient {
                             out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+getWidgetId(ed.getGUIWidget().toString())+"\" />");
                         }
                     }
+                  else if(activity_name.contains("Alert")){
+                    
+                    if(String.valueOf(ed.getEventType()).compareTo("click")==0)
+                    {
+                        out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+"dia_"+getWidgetId(ed.getGUIWidget().toString())+"\" />");
+                    }
+                    else
+                      out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+getWidgetId(ed.getGUIWidget().toString())+"\" />");
+                    
+                  }
                     else 
                       {
                       if(actString(ed.getTargetNode().getWindow().toString()).contains("Alert")){
