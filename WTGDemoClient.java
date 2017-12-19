@@ -56,7 +56,7 @@ public class WTGDemoClient implements GUIAnalysisClient {
     public void run(GUIAnalysisOutput output){
         
         try{
-            File file = new File("/Users/anshuman/Documents/workspace/BeginImplementation/WTG/WTG.xml");
+            File file = new File("/Users/anshumanrohella/Documents/workspace/BeginImplementation/WTG/WTG.xml");
             
             PrintStream out = new PrintStream(file);
             
