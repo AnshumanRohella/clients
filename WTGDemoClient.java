@@ -1,47 +1,21 @@
 
 package presto.android.gui.clients;
 
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
 import presto.android.Configs;
-import presto.android.Debug;
-import presto.android.Logger;
 import presto.android.gui.GUIAnalysisClient;
 import presto.android.gui.GUIAnalysisOutput;
-import presto.android.gui.clients.energy.EnergyAnalyzer;
-import presto.android.gui.clients.energy.EnergyUtils;
-import presto.android.gui.clients.energy.Pair;
 import presto.android.gui.clients.energy.VarUtil;
-import presto.android.gui.graph.*;
-import presto.android.gui.wtg.EventHandler;
-import presto.android.gui.wtg.StackOperation;
 import presto.android.gui.wtg.WTGAnalysisOutput;
 import presto.android.gui.wtg.WTGBuilder;
 import presto.android.gui.wtg.ds.WTG;
 import presto.android.gui.wtg.ds.WTGEdge;
 import presto.android.gui.wtg.ds.WTGNode;
-import presto.android.gui.wtg.flowgraph.NLauncherNode;
-import soot.SootMethod;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import org.w3c.dom.Attr;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
+
 import java.io.File;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,23 +23,33 @@ import java.util.regex.Pattern;
  * Created by zero on 10/21/15.
  */
 public class WTGDemoClient implements GUIAnalysisClient {
-  
-  private ArrayList<String> Activities = new ArrayList<>();
-    
+
+
+    PrintStream out;
+
+    private ArrayList<String> Activities = new ArrayList<>();
+    private Stack<WTGNode> mDialogStack;
     @Override
     public void run(GUIAnalysisOutput output){
         
         try{
-            File file = new File("/Users/anshumanrohella/Documents/workspace/BeginImplementation/WTG/WTG.xml");
+
+            System.out.println("Looking for a WTG for a folder");
+            File file = null;
+            if(!new File(Configs.project+"/WTG/WTG.xml").exists())
+            {
+
+                System.out.println("CREATING WTG.xml file");
+                new File(Configs.project+"/WTG/").mkdir();
+                file = new File(Configs.project+"/WTG/WTG.xml");
+            }else
+            {
+                file = new File(Configs.project+"/WTG/WTG.xml");
+            }
+
             
-            PrintStream out = new PrintStream(file);
-            
-            /*
-             DocumentBuilderFactory dbFactory =DocumentBuilderFactory.newInstance();
-             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-             Document doc = dBuilder.newDocument();
-             */
-            
+            out = new PrintStream(file);
+
             VarUtil.v().guiOutput = output;
             WTGBuilder wtgBuilder = new WTGBuilder();
             wtgBuilder.build(output);
@@ -74,17 +58,9 @@ public class WTGDemoClient implements GUIAnalysisClient {
             
             Collection<WTGEdge> edges = wtg.getEdges();
             Collection<WTGNode> nodes = wtg.getNodes();
-            
-            
-            // Logger.verb("DEMO", "Application: " + Configs.benchmarkName);
-            //Logger.verb("DEMO", "Launcher Node: " + wtg.getLauncherNode());
-            //  pw.println(wtg.getLauncherNode().getWindow().toString());
-            
-            //pw.prinln(wtg.)
-            //add all the activities in the arraylist
-            
+
             for(WTGNode n: nodes){
-              String temp = actString(n.getWindow().toString());
+              String temp = parseNodeName(n.getWindow().toString());
               if(!temp.contains("Alert") && !Activities.contains(temp)){
                 Activities.add(temp);
                 System.out.println("Found and Added node activity :"+temp);
@@ -96,59 +72,30 @@ public class WTGDemoClient implements GUIAnalysisClient {
             out.print("<WindowsTransitionGraph>\n");
             
             for (WTGNode n : nodes){
-                
                 //    Element activity = doc.createElement("Activity");
-                String activity_name = actString(n.getWindow().toString());
-                
-                if(activity_name.contains("Alert")){
-                  for(WTGEdge inner_ed : n.getInEdges()){
-                    String source_node = actString((inner_ed.getSourceNode().getWindow().toString()));
-                    if(Activities.contains(source_node))
-                      out.println("\t<Activity name=\""+source_node+"_"+activity_name+"\" >");
-                    else
-                      continue;
-                  }
-         
+                System.out.println("FOUND NODE STRING ::"+n.getWindow().toString());
+                String node_tag_name = n.getWindow().toString();
+
+                if(node_tag_name.startsWith("ACT[")){
+
+                        printForActivity(n);
+                }
+                else if(node_tag_name.startsWith("OptionsMenu[")){
+                    printForMenu(n);
                 }
                 else
-                  out.println("\t<Activity name=\""+activity_name+"\" >");
-                
-                for(WTGEdge ed : n.getOutEdges()){
-                    
-                  if(actString(n.getWindow().toString()).contains(".Menu"))
-                    {
-                        if(String.valueOf(ed.getEventType()).compareTo("click")==0)
-                        {
-                            out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+getWidgetId(ed.getGUIWidget().toString())+"\" />");
-                        }
-                    }
-                  else if(activity_name.contains("Alert")){
-                    
-                    if(String.valueOf(ed.getEventType()).compareTo("click")==0)
-                    {
-                        out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+"dia_"+getWidgetId(ed.getGUIWidget().toString())+"\" />");
-                    }
-                    else
-                      out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+getWidgetId(ed.getGUIWidget().toString())+"\" />");
-                    
-                  }
-                    else 
-                      {
-                      if(actString(ed.getTargetNode().getWindow().toString()).contains("Alert")){
-                        out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+activity_name+"_"+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+getWidgetId(ed.getGUIWidget().toString())+"\" />");
-                       
-                      }
-                      else
-                        out.println("\t\t<View Type=\""+getEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+actString(ed.getTargetNode().getWindow().toString())+"\" ID=\""+getWidgetId(ed.getGUIWidget().toString())+"\" />");
-                    
-                      }
+                {
+                    System.out.println("NOT PRINTING FOR::"+n.getWindow().toString());
+                    continue;
                 }
-                out.println("\t</Activity>");
-                
+
             }
             out.print("</WindowsTransitionGraph>\n");
             out.flush();
             out.close();
+
+            System.out.println("Created a WTG.xml file at: "+Configs.project+"/WTG/WTG.xml");
+
             /*
              TransformerFactory transformerFactory = TransformerFactory.newInstance();
              Transformer transformer = transformerFactory.newTransformer();
@@ -159,8 +106,85 @@ public class WTGDemoClient implements GUIAnalysisClient {
              */
         }catch(Exception e){e.printStackTrace();}
     }
-    
-    public String actString(String act_name){
+
+
+
+    private void printForDialogueNode(String callingActivity,WTGNode node){
+
+        String node_name =  parseNodeName(node.getWindow().toString());
+
+        out.println("\t<Activity name=\""+callingActivity+"_"+node_name+"\" >");
+
+            for(WTGEdge ed : node.getOutEdges()){
+
+                if(ed.getTargetNode().equals(node)){
+
+                    out.println("\t\t<View Type=\"" + parseEventType(ed.getGUIWidget().toString()) + "\" Event=\"" + ed.getEventType() + "\" Destination=\"" + callingActivity+"_"+node_name+ "\" ID=\"" + "dia_" + parseWidgetId(ed.getGUIWidget().toString()) + "\" />");
+                }else {
+                    out.println("\t\t<View Type=\"" + parseEventType(ed.getGUIWidget().toString()) + "\" Event=\"" + ed.getEventType() + "\" Destination=\"" + parseNodeName(ed.getTargetNode().getWindow().toString()) + "\" ID=\"" + "dia_" + parseWidgetId(ed.getGUIWidget().toString()) + "\" />");
+                }
+            }
+        out.println("\t</Activity>");
+    }
+
+
+    private void printForActivity(WTGNode node){
+        mDialogStack = new Stack<>();
+        String node_name =  parseNodeName(node.getWindow().toString());
+
+        out.println("\t<Activity name=\""+node_name+"\" >");
+
+        for(WTGEdge ed : node.getOutEdges()){
+
+
+            // Case check for destination as dialog.
+            if(ed.getTargetNode().getWindow().toString().startsWith("DIALOG[")){
+                mDialogStack.push(ed.getTargetNode());
+                out.println("\t\t<View Type=\""+ parseEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+node_name+"_"+ parseNodeName(ed.getTargetNode().getWindow().toString())+"\" ID=\""+ parseWidgetId(ed.getGUIWidget().toString())+"\" />");
+
+            }
+            else
+                out.println("\t\t<View Type=\""+ parseEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+ parseNodeName(ed.getTargetNode().getWindow().toString())+"\" ID=\""+ parseWidgetId(ed.getGUIWidget().toString())+"\" />");
+
+        }
+        out.println("\t</Activity>");
+
+            while(!mDialogStack.isEmpty()){
+                printForDialogueNode(node_name,mDialogStack.pop());
+            }
+
+    }
+
+    private void printForMenu(WTGNode node){
+
+        mDialogStack =  new Stack<>();
+        String node_name = parseNodeName(node.getWindow().toString());
+
+        out.println("\t<Activity name=\""+node_name+"\" >");
+
+        for(WTGEdge ed:node.getOutEdges()) {
+
+
+            if(String.valueOf(ed.getEventType()).compareTo("click") == 0) {
+                if(ed.getTargetNode().getWindow().toString().startsWith("DIALOG[")){
+                    mDialogStack.push(ed.getTargetNode());
+                    out.println("\t\t<View Type=\""+ parseEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+node_name+"_"+ parseNodeName(ed.getTargetNode().getWindow().toString())+"\" ID=\""+ parseWidgetId(ed.getGUIWidget().toString())+"\" />");
+
+                }
+                else {
+                    out.println("\t\t<View Type=\"" + parseEventType(ed.getGUIWidget().toString()) + "\" Event=\"" + ed.getEventType() + "\" Destination=\"" + parseNodeName(ed.getTargetNode().getWindow().toString()) + "\" ID=\"" + parseWidgetId(ed.getGUIWidget().toString()) + "\" />");
+                }
+            }
+        }
+        out.println("\t</Activity>");
+
+        while(!mDialogStack.isEmpty()){
+            printForDialogueNode(node_name,mDialogStack.pop());
+        }
+
+    }
+
+    private String parseNodeName(String act_name){
         if(act_name.contains("LAUNCHER")){
             
             return act_name;
@@ -211,7 +235,7 @@ public class WTGDemoClient implements GUIAnalysisClient {
         
     }
     
-    public String getEventType(String widget){
+    public String parseEventType(String widget){
         if(widget.contains("LAUNCHER")){
             
             return widget;
@@ -243,7 +267,10 @@ public class WTGDemoClient implements GUIAnalysisClient {
         return ret;
         
     }
-    public String getWidgetId(String widget){
+
+
+
+    public String parseWidgetId(String widget){
         if(widget.contains("LAUNCHER")){
             
             return widget;
