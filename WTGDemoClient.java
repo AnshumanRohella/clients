@@ -76,7 +76,7 @@ public class WTGDemoClient implements GUIAnalysisClient {
                 System.out.println("FOUND NODE STRING ::"+n.getWindow().toString());
                 String node_tag_name = n.getWindow().toString();
 
-                if(node_tag_name.startsWith("ACT[")){
+                if(node_tag_name.startsWith("ACT[") || node_tag_name.startsWith("LAUNCHER")){
 
                         printForActivity(n);
                 }
