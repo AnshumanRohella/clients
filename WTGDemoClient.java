@@ -24,6 +24,8 @@ import java.util.regex.Pattern;
  */
 public class WTGDemoClient implements GUIAnalysisClient {
 
+    ArrayList<String> mUnwantedEvents;
+
 
     PrintStream out;
 
@@ -31,7 +33,9 @@ public class WTGDemoClient implements GUIAnalysisClient {
     private Stack<WTGNode> mDialogStack;
     @Override
     public void run(GUIAnalysisOutput output){
-        
+
+        mUnwantedEvents = new ArrayList<>();
+        addUnwantedEvents(mUnwantedEvents);
         try{
 
             System.out.println("Looking for a WTG for a folder");
@@ -116,6 +120,9 @@ public class WTGDemoClient implements GUIAnalysisClient {
         out.println("\t<Activity name=\""+callingActivity+"_"+node_name+"\" >");
 
             for(WTGEdge ed : node.getOutEdges()){
+                if(mUnwantedEvents.contains(ed.getEventType().toString())){
+                    continue;
+                }
 
                 if(ed.getTargetNode().equals(node)){
 
@@ -136,9 +143,13 @@ public class WTGDemoClient implements GUIAnalysisClient {
 
         for(WTGEdge ed : node.getOutEdges()){
 
-
+            System.out.println("Printing Event String "+ed.getEventType().toString());
+            if(mUnwantedEvents.contains(ed.getEventType().toString())){
+                continue;
+            }
             // Case check for destination as dialog.
             if(ed.getTargetNode().getWindow().toString().startsWith("DIALOG[")){
+
                 mDialogStack.push(ed.getTargetNode());
                 out.println("\t\t<View Type=\""+ parseEventType(ed.getGUIWidget().toString())+"\" Event=\""+ed.getEventType()+"\" Destination=\""+node_name+"_"+ parseNodeName(ed.getTargetNode().getWindow().toString())+"\" ID=\""+ parseWidgetId(ed.getGUIWidget().toString())+"\" />");
 
@@ -299,6 +310,16 @@ public class WTGDemoClient implements GUIAnalysisClient {
         
         return ret;
         
+    }
+
+    private void addUnwantedEvents(ArrayList<String> unwanted_Events){
+        unwanted_Events.add("implicit_home_event");
+        unwanted_Events.add("implicit_power_event");
+        unwanted_Events.add("implicit_rotate_event");
+        unwanted_Events.add("implicit_home_event");
+        unwanted_Events.add("implicit_on_activity_result");
+
+
     }
     
 }
