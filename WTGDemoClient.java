@@ -315,7 +315,6 @@ public class WTGDemoClient implements GUIAnalysisClient {
     private void addUnwantedEvents(ArrayList<String> unwanted_Events){
         unwanted_Events.add("implicit_home_event");
         unwanted_Events.add("implicit_power_event");
-        unwanted_Events.add("implicit_rotate_event");
         unwanted_Events.add("implicit_home_event");
         unwanted_Events.add("implicit_on_activity_result");
 
